@@ -3,7 +3,7 @@ import { Product, CartItem } from "@/types";
 const ADMIN_AUTH_KEY = "saree_sanskriti_admin_auth";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000/api";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 // Auth helpers
 const AUTH_STORAGE_KEY = ADMIN_AUTH_KEY;
@@ -255,3 +255,4 @@ export const clearCart = (): void => {
     // ignore
   }
 };
+
