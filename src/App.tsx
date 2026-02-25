@@ -27,7 +27,7 @@ const App = () => (
             <Route path="/products" element={<Products />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/api/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/product/:id" element={<AdminProductForm />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -40,3 +40,4 @@ const App = () => (
 );
 
 export default App;
+
