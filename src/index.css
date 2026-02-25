@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Saree Sanskriti Design System - 60-30-10 Color Rule
+ *
+ * 60% DOMINANT (background, cards, main surfaces): Warm Ivory — #FBF8F4
+ * 30% SECONDARY (sections, footer, supporting): Terracotta — #B85C38
+ * 10% ACCENT (CTAs, links, highlights): Deep Maroon — #7B2D3E
+ */
+
+@layer base {
+  :root {
+    /* 60% - Dominant: Warm Ivory (background, cards, main areas) */
+    --background: 33 45% 97%;
+    --foreground: 350 35% 18%;
+
+    --card: 33 40% 99%;
+    --card-foreground: 350 35% 18%;
+
+    --popover: 33 40% 99%;
+    --popover-foreground: 350 35% 18%;
+
+    /* 10% - Accent: Deep Maroon (buttons, links, prices, key elements) */
+    --primary: 350 58% 30%;
+    --primary-foreground: 33 30% 98%;
+
+    /* 30% - Secondary: Terracotta (footer, sections, feature blocks) */
+    --secondary: 18 55% 45%;
+    --secondary-foreground: 33 30% 98%;
+
+    /* Muted (within 60% family) */
+    --muted: 33 30% 92%;
+    --muted-foreground: 350 25% 42%;
+
+    /* Accent for badges/tags (10% family, slightly lighter) */
+    --accent: 350 45% 38%;
+    --accent-foreground: 33 30% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 33 30% 98%;
+
+    --border: 33 25% 88%;
+    --input: 33 25% 88%;
+    --ring: 350 58% 30%;
+
+    --radius: 0.5rem;
+
+    --success: 142 70% 35%;
+    --success-foreground: 33 30% 98%;
+
+    --sidebar-background: 33 35% 95%;
+    --sidebar-foreground: 350 35% 18%;
+    --sidebar-primary: 350 58% 30%;
+    --sidebar-primary-foreground: 33 30% 98%;
+    --sidebar-accent: 18 55% 45%;
+    --sidebar-accent-foreground: 33 30% 98%;
+    --sidebar-border: 33 25% 88%;
+    --sidebar-ring: 350 58% 30%;
+  }
+
+  .dark {
+    /* 60% - Dominant (dark) */
+    --background: 350 25% 9%;
+    --foreground: 33 25% 92%;
+
+    --card: 350 25% 11%;
+    --card-foreground: 33 25% 92%;
+
+    --popover: 350 25% 11%;
+    --popover-foreground: 33 25% 92%;
+
+    /* 10% - Accent */
+    --primary: 350 55% 48%;
+    --primary-foreground: 350 30% 12%;
+
+    /* 30% - Secondary */
+    --secondary: 18 50% 42%;
+    --secondary-foreground: 33 30% 98%;
+
+    --muted: 350 20% 18%;
+    --muted-foreground: 33 20% 62%;
+
+    --accent: 350 45% 42%;
+    --accent-foreground: 33 30% 98%;
+
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 33 30% 98%;
+
+    --border: 350 22% 22%;
+    --input: 350 22% 22%;
+    --ring: 350 55% 48%;
+
+    --success: 142 60% 40%;
+    --success-foreground: 33 30% 98%;
+
+    --sidebar-background: 350 25% 10%;
+    --sidebar-foreground: 33 25% 92%;
+    --sidebar-primary: 350 55% 48%;
+    --sidebar-primary-foreground: 350 30% 12%;
+    --sidebar-accent: 18 50% 42%;
+    --sidebar-accent-foreground: 33 30% 98%;
+    --sidebar-border: 350 22% 22%;
+    --sidebar-ring: 350 55% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Pattern overlay uses 30% secondary (terracotta) at low opacity */
+.pattern-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B85C38' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
