@@ -38,7 +38,9 @@ const productSchema = z.object({
   description: z.string().min(10),
   fabric: z.string(),
   category: z.string(),
-  imageUrls: z.array(z.object({ value: z.string() })).min(1),
+  imageUrls: z
+  .array(z.object({ value: z.string().url("Valid image URL required") }))
+  .min(1, "At least one image URL is required"),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -97,24 +99,28 @@ const AdminProductForm = () => {
   }, [id, isEditing, form, navigate]);
 
   const onSubmit = async (values: ProductFormData) => {
-    const productData = {
-      ...values,
-      imageUrls: values.imageUrls.map((i) => i.value),
-    };
-
-    try {
-      if (isEditing) {
-        await apiPut(`/admin/products/${id}`, productData);
-        toast.success("Product updated successfully");
-      } else {
-        await apiPost("/admin/products", productData);
-        toast.success("Product added successfully");
-      }
-      navigate("/admin/dashboard");
-    } catch {
-      toast.error("Failed to save product");
-    }
+  const productData = {
+    name: values.name,
+    price: values.price,
+    description: values.description,
+    fabric: values.fabric,
+    category: values.category,
+    imageUrls: values.imageUrls.map((i) => i.value.trim()),
   };
+
+  try {
+    if (isEditing) {
+      await apiPut(`/admin/products/${id}`, productData);
+      toast.success("Product updated successfully");
+    } else {
+      await apiPost("/admin/products", productData);
+      toast.success("Product added successfully");
+    }
+    navigate("/admin/dashboard");
+  } catch {
+    toast.error("Failed to save product");
+  }
+};
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -244,3 +250,4 @@ const AdminProductForm = () => {
 };
 
 export default AdminProductForm;
+
