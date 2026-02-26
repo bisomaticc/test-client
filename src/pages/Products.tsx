@@ -18,28 +18,30 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+  let mounted = true;
 
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/products`);
-        if (!res.ok) throw new Error("Failed to fetch products");
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products`, {
+        cache: "no-store",
+      });
 
-        const data = await res.json();
-        if (mounted) setProducts(data);
-      } catch (err) {
-        console.error("Error fetching products:", err);
-        if (mounted) setProducts([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+      if (!res.ok) throw new Error("Failed to fetch products");
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      const data = await res.json();
+      if (mounted) setProducts(data);
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      if (mounted) setProducts([]);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  })();
 
+  return () => {
+    mounted = false;
+  };
+}, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [fabricFilter, setFabricFilter] = useState("all");
@@ -154,3 +156,4 @@ const Products = () => {
 };
 
 export default Products;
+
