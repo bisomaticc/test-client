@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { loginAdmin } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -17,10 +22,11 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Lock, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+
+const API_BASE = "https://test-server-silk.vercel.app/api";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -29,22 +35,49 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "test",
-      password: "test",
+      email: "",
+      password: "",
     },
   });
 
   const onSubmit = async (data: LoginFormData) => {
     setError("");
-    const success = await loginAdmin(data.username, data.password);
-    if (success) {
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Invalid credentials");
+      }
+
+      const result = await res.json();
+
+      // ✅ store token or login flag
+      if (result.token) {
+        localStorage.setItem("adminToken", result.token);
+      } else {
+        // fallback if backend doesn't return token yet
+        localStorage.setItem("adminToken", "logged-in");
+      }
+
       navigate("/admin/dashboard");
-    } else {
-      setError("Invalid username or password");
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,6 +93,7 @@ const AdminLogin = () => {
             Sign in to access the admin dashboard
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-4">
@@ -72,12 +106,12 @@ const AdminLogin = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter username" {...field} />
+                      <Input placeholder="admin@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -91,21 +125,32 @@ const AdminLogin = () => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter password" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="Enter password"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                Sign In
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={loading}
+              >
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </Form>
 
           <div className="mt-6 text-center">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            <Link
+              to="/"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
               ← Back to Store
             </Link>
           </div>
