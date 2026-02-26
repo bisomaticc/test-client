@@ -26,30 +26,33 @@ const ProductDetail = () => {
 
   const { addItem } = useCart();
 
-  useEffect(() => {
-    if (!id) return;
+ useEffect(() => {
+  if (!id) return;
 
-    let mounted = true;
+  let mounted = true;
 
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/products/${id}`);
-        if (!res.ok) throw new Error("Product not found");
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products/${id}`, {
+        cache: "no-store",
+      });
 
-        const data = await res.json();
-        if (mounted) setProduct(data);
-      } catch (err) {
-        console.error("Failed to fetch product:", err);
-        if (mounted) setProduct(null);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+      if (!res.ok) throw new Error("Product not found");
 
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+      const data = await res.json();
+      if (mounted) setProduct(data);
+    } catch (err) {
+      console.error("Failed to fetch product:", err);
+      if (mounted) setProduct(null);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  })();
+
+  return () => {
+    mounted = false;
+  };
+}, [id]);
 
   if (loading) {
     return (
@@ -82,8 +85,11 @@ const ProductDetail = () => {
     );
   }
 
-  const images = product.imageUrls?.length ? product.imageUrls : [];
-  const currentImage = images[imageIndex] ?? images[0];
+  const images: string[] =
+  Array.isArray(product.imageUrls) && product.imageUrls.length > 0
+    ? product.imageUrls
+    : [];
+  const currentImage = images[imageIndex] ?? "";
 
   return (
     <Layout>
@@ -103,14 +109,17 @@ const ProductDetail = () => {
           {/* Images */}
           <div className="space-y-3">
             <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted">
-              {currentImage && (
-                <img
-                  src={currentImage}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              )}
-
+            {currentImage ? (
+  <img
+    src={currentImage}
+    alt={product.name}
+    className="w-full h-full object-cover"
+  />
+) : (
+  <div className="flex items-center justify-center h-full text-muted-foreground">
+    No image available
+  </div>
+)}
               <Badge className="absolute top-4 left-4 bg-accent text-accent-foreground">
                 {product.category}
               </Badge>
@@ -215,3 +224,4 @@ const ProductDetail = () => {
 };
 
 export default ProductDetail;
+
