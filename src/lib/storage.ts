@@ -1,38 +1,31 @@
 import { Product, CartItem } from "@/types";
 
-const ADMIN_AUTH_KEY = "saree_sanskriti_admin_auth";
+const AUTH_STORAGE_KEY = "adminToken";
 
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
-// Auth helpers
-const AUTH_STORAGE_KEY = ADMIN_AUTH_KEY;
-
+const CART_KEY = "saree_cart";
 export const getAuthToken = (): string | null => {
-  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!stored) return null;
-  try {
-    const obj = JSON.parse(stored);
-    return obj?.token || null;
-  } catch {
-    return null;
-  }
+  return localStorage.getItem(AUTH_STORAGE_KEY);
 };
 
-export const loginAdmin = async (username: string, password: string): Promise<boolean> => {
+export const loginAdmin = async (email: string, password: string): Promise<boolean> => {
   try {
     const res = await fetch(`${API_BASE}/admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: username, password }),
+      body: JSON.stringify({ email, password }),
     });
+
     if (!res.ok) return false;
+
     const data = await res.json();
-    const token = data.token;
-    if (!token) return false;
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ username, token, isAuthenticated: true }));
+    if (!data.token) return false;
+
+    localStorage.setItem(AUTH_STORAGE_KEY, data.token);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -42,15 +35,9 @@ export const logoutAdmin = (): void => {
 };
 
 export const isAdminAuthenticated = (): boolean => {
-  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!stored) return false;
-  try {
-    const auth = JSON.parse(stored);
-    return auth?.isAuthenticated === true && typeof auth?.token === "string";
-  } catch {
-    return false;
-  }
+  return !!localStorage.getItem(AUTH_STORAGE_KEY);
 };
+
 
 // Products - operate exclusively with backend (MongoDB). No localStorage fallback.
 export const getProducts = async (): Promise<Product[]> => {
@@ -105,54 +92,73 @@ export const addProduct = async (product: Omit<Product, "id" | "createdAt">, fil
   return (await res.json()) as Product;
 };
 
-export const updateProduct = async (id: string, updates: Partial<Product>, file?: File): Promise<Product | null> => {
+export const updateProduct = async (
+  id: string,
+  updates: Partial<Product>,
+  file?: File
+): Promise<Product | null> => {
   const token = getAuthToken();
 
-  let options: RequestInit = { method: "PUT", headers: {} };
+  const headers: Record<string, string> = {};
+  let body: BodyInit;
 
   if (file) {
     const form = new FormData();
-    form.append("image", file);
-    if (updates.name) form.append("name", updates.name as string);
-    if (updates.price !== undefined) form.append("price", String(updates.price));
-    if (updates.description) form.append("description", updates.description as string);
-    if (updates.fabric) form.append("fabric", updates.fabric as string);
-    if (updates.category) form.append("category", updates.category as string);
-    if (updates.imageUrls && updates.imageUrls.length > 0) form.append("imageUrl", updates.imageUrls[0] as string);
-    options.body = form;
+    if (updates.name) form.append("name", updates.name);
+    if (updates.price !== undefined)
+      form.append("price", String(updates.price));
+    if (updates.description) form.append("description", updates.description);
+    if (updates.fabric) form.append("fabric", updates.fabric);
+    if (updates.category) form.append("category", updates.category);
+    body = form;
   } else {
-    options.headers = { "Content-Type": "application/json" };
-    options.body = JSON.stringify(updates);
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(updates);
   }
 
-  if (token) {
-    options.headers = { ...(options.headers as Record<string,string>), Authorization: `Bearer ${token}` };
-  }
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/admin/products/${id}`, options);
+  const res = await fetch(`${API_BASE}/admin/products/${id}`, {
+    method: "PUT",
+    headers,
+    body,
+  });
+
   if (res.status === 404) return null;
+
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText || "Unknown error");
-    throw new Error(`Failed to update product ${id}: ${res.status} ${text}`);
+    const text = await res.text();
+    throw new Error(`Failed to update product: ${res.status} ${text}`);
   }
+
   return (await res.json()) as Product;
 };
 
 export const deleteProduct = async (id: string): Promise<boolean> => {
   const token = getAuthToken();
-  const headers: Record<string,string> = {};
+  const headers: Record<string, string> = {};
+
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/admin/products/${id}`, { method: "DELETE", headers });
+  const res = await fetch(`${API_BASE}/admin/products/${id}`, {
+    method: "DELETE",
+    headers,
+  });
+
   if (res.status === 404) return false;
+
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText || "Unknown error");
-    throw new Error(`Failed to delete product ${id}: ${res.status} ${text}`);
+    const text = await res.text();
+    throw new Error(`Failed to delete product: ${res.status} ${text}`);
   }
+
   return true;
 };
 
-// Add order support - sends order to backend /checkout
+/* =========================
+   ORDERS
+========================= */
+
 export const addOrder = async (order: {
   customerName: string;
   email?: string;
@@ -165,7 +171,8 @@ export const addOrder = async (order: {
   const payload = {
     customerName: order.customerName,
     phone: order.phone,
-    city: order.address || "",
+    email: order.email || "",
+    address: order.address || "",
     items: [
       {
         id: order.productId,
@@ -174,9 +181,6 @@ export const addOrder = async (order: {
         qty: 1,
       },
     ],
-    // include optional fields for backend/emailing if needed
-    email: order.email || "",
-    address: order.address || "",
   };
 
   const res = await fetch(`${API_BASE}/checkout`, {
@@ -186,58 +190,59 @@ export const addOrder = async (order: {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText || "Unknown error");
+    const text = await res.text();
     throw new Error(`Failed to place order: ${res.status} ${text}`);
   }
 
-  return await res.json();
+  return res.json();
 };
 
-// Cart helpers (localStorage)
-const CART_KEY = "saree_cart";
+/* =========================
+   CART (LOCAL STORAGE)
+========================= */
 
 export const getCart = (): CartItem[] => {
   try {
     const raw = localStorage.getItem(CART_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as CartItem[];
+    return raw ? (JSON.parse(raw) as CartItem[]) : [];
   } catch {
     return [];
   }
 };
 
 const saveCart = (items: CartItem[]) => {
-  try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  } catch {
-    // ignore
-  }
+  localStorage.setItem(CART_KEY, JSON.stringify(items));
 };
 
-export const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1): CartItem[] => {
+export const addToCart = (
+  item: Omit<CartItem, "quantity">,
+  quantity = 1
+): CartItem[] => {
   const items = getCart();
-  const idx = items.findIndex((i) => i.productId === item.productId);
-  if (idx >= 0) {
-    items[idx].quantity += quantity;
+  const existing = items.find((i) => i.productId === item.productId);
+
+  if (existing) {
+    existing.quantity += quantity;
   } else {
     items.push({ ...item, quantity });
   }
+
   saveCart(items);
   return items;
 };
 
-export const updateCartItemQuantity = (productId: string, quantity: number): CartItem[] => {
-  const items = getCart();
-  const idx = items.findIndex((i) => i.productId === productId);
-  if (idx >= 0) {
-    if (quantity <= 0) {
-      items.splice(idx, 1);
-    } else {
-      items[idx].quantity = quantity;
-    }
-  }
+export const updateCartItemQuantity = (
+  productId: string,
+  quantity: number
+): CartItem[] => {
+  const items = getCart().filter((i) =>
+    i.productId === productId ? quantity > 0 : true
+  );
+
+  items.forEach((i) => {
+    if (i.productId === productId) i.quantity = quantity;
+  });
+
   saveCart(items);
   return items;
 };
@@ -249,10 +254,5 @@ export const removeFromCart = (productId: string): CartItem[] => {
 };
 
 export const clearCart = (): void => {
-  try {
-    localStorage.removeItem(CART_KEY);
-  } catch {
-    // ignore
-  }
+  localStorage.removeItem(CART_KEY);
 };
-
