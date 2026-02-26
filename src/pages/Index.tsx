@@ -1,25 +1,37 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getProducts } from "@/lib/storage";
 import Layout from "@/components/Layout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Truck, Shield } from "lucide-react";
 
+const API_BASE = "https://test-server-silk.vercel.app/api";
+
 const Index = () => {
   const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
-        const prods = await getProducts();
-        if (mounted) setProducts(prods);
+        const res = await fetch(`${API_BASE}/products`);
+        if (!res.ok) throw new Error("Failed to fetch products");
+
+        const data = await res.json();
+        if (mounted) setProducts(data);
       } catch (err) {
+        console.error("Failed to load products:", err);
         if (mounted) setProducts([]);
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const featuredProducts = products.slice(0, 4);
@@ -61,7 +73,7 @@ const Index = () => {
             ].map((item, i) => (
               <div
                 key={item.title}
-                className={`flex items-center gap-4 justify-center md:justify-start animate-fade-in-up opacity-0 [animation-fill-mode:forwards]`}
+                className="flex items-center gap-4 justify-center md:justify-start animate-fade-in-up opacity-0 [animation-fill-mode:forwards]"
                 style={{ animationDelay: `${250 + i * 100}ms` }}
               >
                 <div className={`p-3 ${item.bg} rounded-full transition-transform duration-300 hover:scale-110`}>
@@ -90,17 +102,23 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product, i) => (
-              <div
-                key={product.id}
-                className="animate-fade-in-up opacity-0 [animation-fill-mode:forwards]"
-                style={{ animationDelay: `${350 + i * 80}ms` }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Loading featured sarees...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product, i) => (
+                <div
+                  key={product._id}
+                  className="animate-fade-in-up opacity-0 [animation-fill-mode:forwards]"
+                  style={{ animationDelay: `${350 + i * 80}ms` }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="text-center mt-12 animate-fade-in-up opacity-0 [animation-delay:700ms] [animation-fill-mode:forwards]">
             <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
