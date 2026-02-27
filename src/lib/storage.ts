@@ -12,7 +12,7 @@ export const getAuthToken = (): string | null => {
 
 export const loginAdmin = async (email: string, password: string): Promise<boolean> => {
   try {
-    const res = await fetch(`${API_BASE}/admin/login`, {
+    const res = await fetch(`$(API_BASE)/admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -245,4 +245,5 @@ export const removeFromCart = (productId: string): CartItem[] => {
 export const clearCart = (): void => {
   localStorage.removeItem(CART_KEY);
 };
+
 
