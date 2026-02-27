@@ -72,7 +72,7 @@ export async function addProduct(form) {
       : (form.imageUrls ? [form.imageUrls] : []),
   };
 
-  const response = await fetch(${API_URL}/admin/product, {
+  const response = await fetch($(API_URL)/admin/product, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -245,5 +245,6 @@ export const removeFromCart = (productId: string): CartItem[] => {
 export const clearCart = (): void => {
   localStorage.removeItem(CART_KEY);
 };
+
 
 
