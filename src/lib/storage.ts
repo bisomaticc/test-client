@@ -59,38 +59,27 @@ export const getProductById = async (id: string): Promise<Product | undefined> =
   return (await res.json()) as Product;
 };
 
-export const addProduct = async (product: Omit<Product, "id" | "createdAt">, file?: File): Promise<Product> => {
-  const token = getAuthToken();
+export async function addProduct(form) {
+  const payload = {
+    name: form.name,
+    price: Number(form.price),
+    description: form.description,
+    category: form.category,
+    fabric: form.fabric,
+    stock: Number(form.stock ?? 0),
+    imageUrls: Array.isArray(form.imageUrls)
+      ? form.imageUrls
+      : (form.imageUrls ? [form.imageUrls] : []),
+  };
 
-  let options: RequestInit = { method: "POST", headers: {} };
+  const response = await fetch(${API_URL}/admin/product, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-  if (file) {
-    const form = new FormData();
-    form.append("image", file);
-    form.append("name", product.name);
-    form.append("price", String(product.price));
-    form.append("description", product.description || "");
-    form.append("fabric", product.fabric || "");
-    form.append("category", product.category || "");
-    form.append("imageUrl", product.imageUrls?.[0] || "");
-    options.body = form;
-  } else {
-    const headers: Record<string,string> = { "Content-Type": "application/json" };
-    options.body = JSON.stringify(product);
-    options.headers = headers;
-  }
-
-  if (token) {
-    options.headers = { ...(options.headers as Record<string,string>), Authorization: `Bearer ${token}` };
-  }
-
-  const res = await fetch(`${API_BASE}/admin/products`, options);
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText || "Unknown error");
-    throw new Error(`Failed to add product: ${res.status} ${text}`);
-  }
-  return (await res.json()) as Product;
-};
+  return response.json();
+}
 
 export const updateProduct = async (
   id: string,
@@ -256,3 +245,4 @@ export const removeFromCart = (productId: string): CartItem[] => {
 export const clearCart = (): void => {
   localStorage.removeItem(CART_KEY);
 };
+
