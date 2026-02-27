@@ -97,7 +97,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           className="flex-1"
           onClick={() =>
             addItem({
-              productId: (product as any)._id,
+              productId: product._id,
               name: product.name,
               price: product.price,
               imageUrl: product.imageUrls?.[0] ?? "",
@@ -116,4 +116,5 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
+
 
