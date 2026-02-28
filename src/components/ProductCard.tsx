@@ -32,7 +32,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-scale-in">
-      <Link to={`/products/${product._id}`} className="block">
+      <Link to={`/product/${product._id}`} className="block">
         <div className="relative aspect-[3/4] overflow-hidden">
           <img
             src={currentImage}
@@ -116,6 +116,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
+
 
 
 
