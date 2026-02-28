@@ -32,7 +32,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-scale-in">
-      <Link to={`/product/${product.id}`} className="block">
+      <Link to={`/product/${product._id}`} className="block">
         <div className="relative aspect-[3/4] overflow-hidden">
           <img
             src={currentImage}
@@ -108,7 +108,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           Add to Cart
         </Button>
         <Button asChild className="flex-1 bg-primary hover:bg-primary/90">
-          <Link to={`/product/${product.id}`}>View Details</Link>
+          <Link to={`/product/${product._id}`}>View Details</Link>
         </Button>
       </CardFooter>
     </Card>
@@ -116,5 +116,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
+
 
 
