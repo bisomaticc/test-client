@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+const API_BASE = "https://test-server-8u1ljxseh-tests-projects-5532fcc0.vercel.app/api";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -224,4 +224,5 @@ const ProductDetail = () => {
 };
 
 export default ProductDetail;
+
 
