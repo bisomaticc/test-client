@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 
-const API_BASE = "https://test-server-8u1ljxseh-tests-projects-5532fcc0.vercel.app/api";
+const API_BASE = "https://test-server-silk.vercel.app/api";
+
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -156,5 +157,6 @@ const Products = () => {
 };
 
 export default Products;
+
 
 
