@@ -5,7 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Truck, Shield } from "lucide-react";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+const API_BASE = "https://test-server-8u1ljxseh-tests-projects-5532fcc0.vercel.app/api";
 
 const Index = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -153,3 +153,4 @@ const Index = () => {
 };
 
 export default Index;
+
