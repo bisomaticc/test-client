@@ -48,10 +48,44 @@ type ProductFormData = z.infer<typeof productSchema>;
 const fabrics = ["Silk", "Cotton", "Chiffon", "Georgette", "Banarasi", "Kanjivaram"];
 const categories = ["Weddings", "Parties", "Casual", "Festive", "Bridal"];
 
+
+//changes Google Drive URLs to direct image links
+
+function convertDriveUrl(url: string): string {
+  if (!url) return url;
+
+  try {
+    const parsedUrl = new URL(url);
+
+    // Handle /file/d/FILE_ID/view format
+    const match = parsedUrl.pathname.match(/\/file\/d\/([^/]+)/);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+
+    // Handle open?id=FILE_ID format
+    const idParam = parsedUrl.searchParams.get("id");
+    if (idParam) {
+      return `https://lh3.googleusercontent.com/d/${idParam}`;
+    }
+
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+// changes all image URLs in the product data to direct links before saving
+
 const AdminProductForm = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = id && id !== "new";
+
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [imagePreview, setImagePreview] = useState("");
+
+
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -98,15 +132,32 @@ const AdminProductForm = () => {
     })();
   }, [id, isEditing, form, navigate]);
 
+const imageUrls = form.watch("imageUrls")?.map((item) => convertDriveUrl(item.value.trim())) ?? [];
+  const previewUrl = imageUrls?.[previewIndex]?.startsWith("http")
+    ? imageUrls[previewIndex]
+    : imageUrls?.[0]?.startsWith("http")
+    ? imageUrls[0]
+    : "";
+
+
   const onSubmit = async (values: ProductFormData) => {
-  const productData = {
-    name: values.name,
-    price: values.price,
-    description: values.description,
-    fabric: values.fabric,
-    category: values.category,
-    imageUrls: values.imageUrls.map((i) => i.value.trim()),
-  };
+    const urls = values.imageUrls
+      .map((i) => convertDriveUrl(i.value.trim()))
+      .filter((u) => u.startsWith("http"));
+
+    if (urls.length === 0) {
+      toast.error("Add at least one valid image URL.");
+      return;
+    }
+
+    const productData = {
+      name: values.name,
+      price: values.price,
+      description: values.description,
+      fabric: values.fabric,
+      category: values.category,
+      imageUrls: urls,
+    };
 
   try {
     if (isEditing) {
@@ -250,4 +301,3 @@ const AdminProductForm = () => {
 };
 
 export default AdminProductForm;
-
