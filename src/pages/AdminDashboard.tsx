@@ -6,8 +6,8 @@ import {
   getProducts,
   deleteProduct,
 } from "@/lib/storage";
-import { apiGet } from "@/lib/api";
-import { Product, Order, AdminOrderRow } from "@/types";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { Product, Order, AdminOrderRow, ShopCatalog } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -127,13 +127,11 @@ const AdminDashboard = () => {
     setOrders(orderRows);
 
     try {
-      setFabrics(JSON.parse(localStorage.getItem("fabrics") || "[]") as string[]);
+      const catalog = (await apiGet("/admin/catalog")) as ShopCatalog;
+      setFabrics(Array.isArray(catalog?.fabrics) ? catalog.fabrics : []);
+      setCategories(Array.isArray(catalog?.categories) ? catalog.categories : []);
     } catch {
       setFabrics([]);
-    }
-    try {
-      setCategories(JSON.parse(localStorage.getItem("categories") || "[]") as string[]);
-    } catch {
       setCategories([]);
     }
   };
@@ -155,95 +153,75 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddFabric = () => {
+  const handleAddFabric = async () => {
     if (!newFabric.trim()) return;
     const name = newFabric.trim();
     try {
-      const existing = JSON.parse(localStorage.getItem("fabrics") || "[]") as string[];
-      if (existing.includes(name)) {
-        toast.error("Fabric already exists or name is invalid.");
-        return;
-      }
-      existing.push(name);
-      localStorage.setItem("fabrics", JSON.stringify(existing));
+      await apiPost("/admin/catalog/fabric", { name });
       setNewFabric("");
-      loadData();
+      await loadData();
       toast.success("Fabric added successfully!");
-    } catch {
-      toast.error("Failed to add fabric.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add fabric.";
+      toast.error(msg);
     }
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
     const name = newCategory.trim();
     try {
-      const existing = JSON.parse(localStorage.getItem("categories") || "[]") as string[];
-      if (existing.includes(name)) {
-        toast.error("Category already exists or name is invalid.");
-        return;
-      }
-      existing.push(name);
-      localStorage.setItem("categories", JSON.stringify(existing));
+      await apiPost("/admin/catalog/category", { name });
       setNewCategory("");
-      loadData();
+      await loadData();
       toast.success("Category added successfully!");
-    } catch {
-      toast.error("Failed to add category.");
-    }
-  };
-
-  const deleteFabricLocal = async (name: string) => {
-    const prods = await getProducts().catch(() => [] as Product[]);
-    if (prods.some((p) => p.fabric === name)) {
-      return false;
-    }
-    const fabs = (JSON.parse(localStorage.getItem("fabrics") || "[]") as string[]).filter((f) => f !== name);
-    try {
-      localStorage.setItem("fabrics", JSON.stringify(fabs));
-      return true;
-    } catch {
-      return false;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add category.";
+      toast.error(msg);
     }
   };
 
   const handleDeleteFabric = async () => {
-    if (deleteFabricName) {
-      const ok = await deleteFabricLocal(deleteFabricName);
-      if (ok) {
-        loadData();
-        setDeleteFabricName(null);
-        toast.success("Fabric removed.");
-      } else {
-        toast.error("Cannot delete: some products use this fabric. Remove or change those products first.");
-      }
-    }
-  };
-
-  const deleteCategoryLocal = async (name: string) => {
-    const prods = await getProducts().catch(() => [] as Product[]);
-    if (prods.some((p) => p.category === name)) {
-      return false;
-    }
-    const cats = (JSON.parse(localStorage.getItem("categories") || "[]") as string[]).filter((c) => c !== name);
+    if (!deleteFabricName) return;
     try {
-      localStorage.setItem("categories", JSON.stringify(cats));
-      return true;
-    } catch {
-      return false;
+      await apiDelete(
+        `/admin/catalog/fabric?name=${encodeURIComponent(deleteFabricName)}`
+      );
+      setDeleteFabricName(null);
+      await loadData();
+      toast.success("Fabric removed.");
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      let msg = "Failed to remove fabric.";
+      try {
+        const parsed = JSON.parse(raw) as { message?: string };
+        if (parsed?.message) msg = parsed.message;
+      } catch {
+        if (raw) msg = raw;
+      }
+      toast.error(msg);
     }
   };
 
   const handleDeleteCategory = async () => {
-    if (deleteCategoryName) {
-      const ok = await deleteCategoryLocal(deleteCategoryName);
-      if (ok) {
-        loadData();
-        setDeleteCategoryName(null);
-        toast.success("Category removed.");
-      } else {
-        toast.error("Cannot delete: some products use this category. Remove or change those products first.");
+    if (!deleteCategoryName) return;
+    try {
+      await apiDelete(
+        `/admin/catalog/category?name=${encodeURIComponent(deleteCategoryName)}`
+      );
+      setDeleteCategoryName(null);
+      await loadData();
+      toast.success("Category removed.");
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      let msg = "Failed to remove category.";
+      try {
+        const parsed = JSON.parse(raw) as { message?: string };
+        if (parsed?.message) msg = parsed.message;
+      } catch {
+        if (raw) msg = raw;
       }
+      toast.error(msg);
     }
   };
 
@@ -392,7 +370,9 @@ const AdminDashboard = () => {
                   <Layers className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle>Fabrics</CardTitle>
-                    <CardDescription>Add or remove fabric types for products</CardDescription>
+                    <CardDescription>
+                      Add or remove fabric types (stored in MongoDB Atlas)
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -429,7 +409,9 @@ const AdminDashboard = () => {
                   <Tag className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle>Categories</CardTitle>
-                    <CardDescription>Add or remove categories for products</CardDescription>
+                    <CardDescription>
+                      Add or remove categories (stored in MongoDB Atlas)
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">

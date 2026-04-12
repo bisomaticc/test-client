@@ -157,18 +157,27 @@ const ProductDetail = () => {
               {product.name}
             </h1>
 
-            <p className="text-3xl font-bold text-primary mb-6">
-              ₹{product.price.toLocaleString("en-IN")}
-            </p>
+            <div className="flex flex-wrap items-baseline gap-3 mb-6">
+              {product.mrp != null &&
+                product.mrp > 0 &&
+                product.mrp > product.price && (
+                  <p className="text-xl text-muted-foreground line-through decoration-foreground/50">
+                    ₹{Number(product.mrp).toLocaleString("en-IN")}
+                  </p>
+                )}
+              <p className="text-3xl font-bold text-primary">
+                ₹{product.price.toLocaleString("en-IN")}
+              </p>
+            </div>
 
             <div className="space-y-4 mb-8">
               <p><strong>Fabric:</strong> {product.fabric}</p>
               <p><strong>Category:</strong> {product.category}</p>
             </div>
 
-            <p className="text-muted-foreground mb-8">
+            <div className="text-muted-foreground mb-8 whitespace-pre-wrap break-words">
               {product.description}
-            </p>
+            </div>
 
             <div className="flex flex-wrap items-center gap-3">
               <Input

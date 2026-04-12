@@ -2,6 +2,8 @@ export interface Product {
   _id: string;
   name: string;
   price: number;
+  /** Optional MRP; may be shown struck-through vs selling price. */
+  mrp?: number | null;
   description: string;
   fabric: string;
   category: string;
@@ -32,6 +34,12 @@ export interface AdminOrderRow {
   address: string;
   productSummary: string;
   totalPrice: number;
+}
+
+/** Fabrics and categories stored in MongoDB (`ShopCatalog`). */
+export interface ShopCatalog {
+  fabrics: string[];
+  categories: string[];
 }
 
 export interface AdminUser {

@@ -87,9 +87,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
           {product.name}
         </h3>
         <p className="text-sm text-muted-foreground mb-2">{product.fabric}</p>
-        <p className="text-xl font-bold text-primary">
-          ₹{product.price.toLocaleString("en-IN")}
-        </p>
+        <div className="flex flex-wrap items-baseline gap-2">
+          {product.mrp != null &&
+            product.mrp > 0 &&
+            product.mrp > product.price && (
+              <span className="text-sm text-muted-foreground line-through">
+                ₹{Number(product.mrp).toLocaleString("en-IN")}
+              </span>
+            )}
+          <p className="text-xl font-bold text-primary">
+            ₹{product.price.toLocaleString("en-IN")}
+          </p>
+        </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex flex-col sm:flex-row gap-2">
         <Button

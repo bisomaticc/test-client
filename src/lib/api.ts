@@ -57,7 +57,16 @@ export async function apiDelete(path: string) {
     headers: getAuthHeaders(),
   });
 
+  const text = await res.text();
+
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(text);
+  }
+
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
   }
 }

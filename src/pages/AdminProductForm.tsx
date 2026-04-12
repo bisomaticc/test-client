@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { ShopCatalog } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +35,11 @@ import { toast } from "@/components/ui/sonner";
 
 const productSchema = z.object({
   name: z.string().min(2),
-  price: z.number().min(1),
+  price: z.coerce.number().min(1, "Selling price must be at least 1"),
+  mrp: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().min(0, "MRP cannot be negative").optional()
+  ),
   description: z.string().min(10),
   fabric: z.string(),
   category: z.string(),
@@ -44,9 +49,6 @@ const productSchema = z.object({
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
-
-const fabrics = ["Silk", "Cotton", "Chiffon", "Georgette", "Banarasi", "Kanjivaram"];
-const categories = ["Weddings", "Parties", "Casual", "Festive", "Bridal"];
 
 
 //changes Google Drive URLs to direct image links
@@ -84,6 +86,9 @@ const AdminProductForm = () => {
 
   const [previewIndex, setPreviewIndex] = useState(0);
   const [imagePreview, setImagePreview] = useState("");
+  const [fabrics, setFabrics] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
 
 
 
@@ -92,6 +97,7 @@ const AdminProductForm = () => {
     defaultValues: {
       name: "",
       price: 0,
+      mrp: undefined as number | undefined,
       description: "",
       fabric: "",
       category: "",
@@ -110,6 +116,20 @@ const AdminProductForm = () => {
     if (!token) navigate("/admin/login");
   }, [navigate]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const catalog = (await apiGet("/admin/catalog")) as ShopCatalog;
+        setFabrics(Array.isArray(catalog?.fabrics) ? catalog.fabrics : []);
+        setCategories(Array.isArray(catalog?.categories) ? catalog.categories : []);
+      } catch {
+        toast.error("Failed to load fabrics and categories from the server.");
+      } finally {
+        setCatalogLoaded(true);
+      }
+    })();
+  }, []);
+
   // ✏️ load product when editing
   useEffect(() => {
     if (!isEditing) return;
@@ -120,7 +140,8 @@ const AdminProductForm = () => {
         form.reset({
           name: product.name,
           price: product.price,
-          description: product.description,
+          mrp: product.mrp != null && !Number.isNaN(Number(product.mrp)) ? Number(product.mrp) : undefined,
+          description: product.description ?? "",
           fabric: product.fabric,
           category: product.category,
           imageUrls: product.imageUrls.map((u: string) => ({ value: u })),
@@ -133,6 +154,20 @@ const AdminProductForm = () => {
   }, [id, isEditing, form, navigate]);
 
 const imageUrls = form.watch("imageUrls")?.map((item) => convertDriveUrl(item.value.trim())) ?? [];
+  const fabricValue = form.watch("fabric");
+  const categoryValue = form.watch("category");
+
+  const fabricOptions = useMemo(() => {
+    const base = [...fabrics];
+    if (fabricValue && !base.includes(fabricValue)) base.push(fabricValue);
+    return base.sort((a, b) => a.localeCompare(b));
+  }, [fabrics, fabricValue]);
+
+  const categoryOptions = useMemo(() => {
+    const base = [...categories];
+    if (categoryValue && !base.includes(categoryValue)) base.push(categoryValue);
+    return base.sort((a, b) => a.localeCompare(b));
+  }, [categories, categoryValue]);
   const previewUrl = imageUrls?.[previewIndex]?.startsWith("http")
     ? imageUrls[previewIndex]
     : imageUrls?.[0]?.startsWith("http")
@@ -153,6 +188,7 @@ const imageUrls = form.watch("imageUrls")?.map((item) => convertDriveUrl(item.va
     const productData = {
       name: values.name,
       price: values.price,
+      mrp: values.mrp == null || Number.isNaN(values.mrp) ? null : values.mrp,
       description: values.description,
       fabric: values.fabric,
       category: values.category,
@@ -209,35 +245,90 @@ const imageUrls = form.watch("imageUrls")?.map((item) => convertDriveUrl(item.va
                   )}
                 />
 
-                {/* price */}
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} onChange={(e) => field.onChange(+e.target.value)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* selling price + MRP */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Selling price (₹)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            name={field.name}
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                            value={field.value === 0 || field.value == null ? "" : String(field.value)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              field.onChange(raw === "" ? 0 : Number(raw));
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="mrp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>MRP (₹, optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            step={1}
+                            name={field.name}
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                            value={field.value == null || Number.isNaN(field.value) ? "" : String(field.value)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                field.onChange(undefined);
+                                return;
+                              }
+                              const n = Number(raw);
+                              field.onChange(Number.isFinite(n) ? n : undefined);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 {/* fabric & category */}
                 <div className="grid grid-cols-2 gap-4">
+                  {!catalogLoaded && (
+                    <p className="text-sm text-muted-foreground col-span-2">
+                      Loading fabric and category options from the database…
+                    </p>
+                  )}
                   {[
-                    { name: "fabric", list: fabrics },
-                    { name: "category", list: categories },
+                    { name: "fabric" as const, list: fabricOptions },
+                    { name: "category" as const, list: categoryOptions },
                   ].map(({ name, list }) => (
                     <FormField
                       key={name}
                       control={form.control}
-                      name={name as any}
+                      name={name as "fabric" | "category"}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{name}</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!catalogLoaded}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder={`Select ${name}`} />
@@ -255,14 +346,21 @@ const imageUrls = form.watch("imageUrls")?.map((item) => convertDriveUrl(item.va
                   ))}
                 </div>
 
-                {/* description */}
+                {/* description — line breaks are stored and shown on the storefront */}
                 <FormField
                   control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
-                      <FormControl><Textarea rows={4} {...field} /></FormControl>
+                      <FormControl>
+                        <Textarea
+                          rows={8}
+                          className="min-h-[160px] whitespace-pre-wrap font-sans"
+                          placeholder="Use Enter for new paragraphs. Spaces and line breaks are kept on the live site."
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
