@@ -7,9 +7,14 @@ export interface Product {
   description: string;
   fabric: string;
   category: string;
+  categories?: string[];
   /** At least one image URL. First image is used as primary (e.g. cart thumbnail). */
   imageUrls: string[];
   createdAt: string;
+  updatedAt?: string;
+  colors?: string[];
+  isOutOfStock?: boolean;
+  stock?: number;
 }
 
 export interface Order {
@@ -21,6 +26,8 @@ export interface Order {
   productId: string;
   productName: string;
   productPrice: number;
+  productImage?: string;
+  selectedColor?: string;
   createdAt: string;
 }
 
@@ -34,6 +41,7 @@ export interface AdminOrderRow {
   address: string;
   productSummary: string;
   totalPrice: number;
+  itemImages?: string[];
 }
 
 /** Fabrics and categories stored in MongoDB (`ShopCatalog`). */
@@ -53,5 +61,6 @@ export interface CartItem {
   price: number;
   imageUrl: string;
   quantity: number;
+  selectedColor?: string;
 }
 
