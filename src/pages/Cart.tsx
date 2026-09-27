@@ -44,18 +44,18 @@ const Cart = () => {
           <div className="lg:col-span-2 space-y-4">
             {items.map((item, i) => (
               <div
-                key={item.productId}
+                key={`${item.productId}-${item.selectedColor || "default"}`}
                 className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg border border-border bg-card animate-fade-in-up opacity-0 [animation-fill-mode:forwards]"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <Link
                   to={`/product/${item.productId}`}
-                  className="shrink-0 w-full sm:w-28 aspect-[3/4] overflow-hidden rounded-md bg-muted"
+                  className="shrink-0 w-full sm:w-28 aspect-[3/4] overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900 border flex items-center justify-center p-1"
                 >
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 </Link>
                 <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -66,6 +66,11 @@ const Cart = () => {
                     >
                       {item.name}
                     </Link>
+                    {item.selectedColor && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Color: <span className="font-semibold text-foreground">{item.selectedColor}</span>
+                      </p>
+                    )}
                     <p className="text-primary font-bold mt-1">
                       ₹{item.price.toLocaleString("en-IN")} each
                     </p>
@@ -80,7 +85,8 @@ const Cart = () => {
                         onClick={() =>
                           updateQuantity(
                             item.productId,
-                            Math.max(1, item.quantity - 1)
+                            Math.max(1, item.quantity - 1),
+                            item.selectedColor
                           )
                         }
                         disabled={item.quantity <= 1}
@@ -96,7 +102,11 @@ const Cart = () => {
                         size="icon"
                         className="h-9 w-9 rounded-l-none"
                         onClick={() =>
-                          updateQuantity(item.productId, item.quantity + 1)
+                          updateQuantity(
+                            item.productId,
+                            item.quantity + 1,
+                            item.selectedColor
+                          )
                         }
                       >
                         <Plus className="h-4 w-4" />
@@ -107,7 +117,7 @@ const Cart = () => {
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => removeItem(item.productId)}
+                      onClick={() => removeItem(item.productId, item.selectedColor)}
                       aria-label="Remove from cart"
                     >
                       <Trash2 className="h-4 w-4" />

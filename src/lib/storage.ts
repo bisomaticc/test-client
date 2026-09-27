@@ -3,7 +3,7 @@ import { Product, CartItem } from "@/types";
 const AUTH_STORAGE_KEY = "adminToken";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = "https://test-server-silk.vercel.app/api";
 
 const CART_KEY = "saree_cart";
 export const getAuthToken = (): string | null => {
@@ -12,7 +12,7 @@ export const getAuthToken = (): string | null => {
 
 export const loginAdmin = async (email: string, password: string): Promise<boolean> => {
   try {
-    const res = await fetch(`$(API_BASE)/admin/login`, {
+    const res = await fetch(`${API_BASE}/admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -59,22 +59,29 @@ export const getProductById = async (id: string): Promise<Product | undefined> =
   return (await res.json()) as Product;
 };
 
-export async function addProduct(form) {
+export async function addProduct(form: any) {
   const payload = {
     name: form.name,
     price: Number(form.price),
+    mrp: form.mrp != null ? Number(form.mrp) : null,
     description: form.description,
     category: form.category,
     fabric: form.fabric,
-    stock: Number(form.stock ?? 0),
+    colors: Array.isArray(form.colors) ? form.colors : [],
+    isOutOfStock: Boolean(form.isOutOfStock),
+    stock: form.isOutOfStock ? 0 : Number(form.stock ?? 10),
     imageUrls: Array.isArray(form.imageUrls)
       ? form.imageUrls
       : (form.imageUrls ? [form.imageUrls] : []),
   };
 
-  const response = await fetch($(API_URL)/admin/product, {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE}/admin/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -156,6 +163,8 @@ export const addOrder = async (order: {
   productId: string;
   productName: string;
   productPrice: number;
+  productImage?: string;
+  selectedColor?: string;
 }) => {
   const payload = {
     customerName: order.customerName,
@@ -165,9 +174,10 @@ export const addOrder = async (order: {
     items: [
       {
         id: order.productId,
-        name: order.productName,
+        name: order.selectedColor ? `${order.productName} (${order.selectedColor})` : order.productName,
         price: order.productPrice,
         qty: 1,
+        imageUrls: order.productImage || "",
       },
     ],
   };
@@ -208,7 +218,11 @@ export const addToCart = (
   quantity = 1
 ): CartItem[] => {
   const items = getCart();
-  const existing = items.find((i) => i.productId === item.productId);
+  const existing = items.find(
+    (i) =>
+      i.productId === item.productId &&
+      (i.selectedColor || "") === (item.selectedColor || "")
+  );
 
   if (existing) {
     existing.quantity += quantity;
@@ -222,22 +236,32 @@ export const addToCart = (
 
 export const updateCartItemQuantity = (
   productId: string,
-  quantity: number
+  quantity: number,
+  selectedColor?: string
 ): CartItem[] => {
+  const matches = (i: CartItem) =>
+    i.productId === productId && (!selectedColor || (i.selectedColor || "") === selectedColor);
+
   const items = getCart().filter((i) =>
-    i.productId === productId ? quantity > 0 : true
+    matches(i) ? quantity > 0 : true
   );
 
   items.forEach((i) => {
-    if (i.productId === productId) i.quantity = quantity;
+    if (matches(i)) i.quantity = quantity;
   });
 
   saveCart(items);
   return items;
 };
 
-export const removeFromCart = (productId: string): CartItem[] => {
-  const items = getCart().filter((i) => i.productId !== productId);
+export const removeFromCart = (
+  productId: string,
+  selectedColor?: string
+): CartItem[] => {
+  const matches = (i: CartItem) =>
+    i.productId === productId && (!selectedColor || (i.selectedColor || "") === selectedColor);
+
+  const items = getCart().filter((i) => !matches(i));
   saveCart(items);
   return items;
 };

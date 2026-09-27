@@ -5,7 +5,12 @@ import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, ChevronLeft, ChevronRight, Ban } from "lucide-react";
+import {
+  getProductColors,
+  isProductOutOfStock,
+  COLOR_MAP,
+} from "@/lib/catalogConstants";
 
 interface ProductCardProps {
   product: Product;
@@ -16,6 +21,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const images = product.imageUrls?.length ? product.imageUrls : [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentImage = images[currentIndex] ?? images[0];
+
+  const colors = getProductColors(product);
+  const outOfStock = isProductOutOfStock(product);
 
   if (!currentImage) return null;
 
@@ -31,18 +39,35 @@ const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-scale-in">
+    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-scale-in flex flex-col h-full bg-card">
       <Link to={`/product/${product._id}`} className="block">
-        <div className="relative aspect-[3/4] overflow-hidden">
+        {/* Item 5: Full photo display without top or bottom cut off using object-contain & neutral background */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100/90 dark:bg-neutral-900/90 flex items-center justify-center p-1">
           <img
             src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground">
-            {product.category}
-          </Badge>
+
+          {/* Category Badge */}
+          {product.category && (
+            <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground text-xs shadow-xs">
+              {product.category}
+            </Badge>
+          )}
+
+          {/* Item 8: Out of stock badge */}
+          {outOfStock && (
+            <Badge
+              variant="destructive"
+              className="absolute top-3 right-3 uppercase font-semibold text-[11px] shadow-sm tracking-wide"
+            >
+              Out of Stock
+            </Badge>
+          )}
+
+          {/* Image carousel arrows */}
           {images.length > 1 && (
             <>
               <button
@@ -72,7 +97,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                       setCurrentIndex(i);
                     }}
                     className={`w-2 h-2 rounded-full transition-colors ${
-                      i === currentIndex ? "bg-primary" : "bg-white/70 hover:bg-white"
+                      i === currentIndex ? "bg-primary" : "bg-black/40 hover:bg-black/70"
                     }`}
                     aria-label={`Image ${i + 1}`}
                   />
@@ -82,12 +107,37 @@ const ProductCard = ({ product }: ProductCardProps) => {
           )}
         </div>
       </Link>
-      <CardContent className="p-4">
-        <h3 className="font-heading text-lg font-semibold text-foreground mb-1 line-clamp-1">
-          {product.name}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-2">{product.fabric}</p>
-        <div className="flex flex-wrap items-baseline gap-2">
+
+      <CardContent className="p-4 flex-1 flex flex-col justify-between">
+        <div>
+          <Link to={`/product/${product._id}`}>
+            <h3 className="font-heading text-lg font-semibold text-foreground mb-1 line-clamp-1 hover:text-primary transition-colors">
+              {product.name}
+            </h3>
+          </Link>
+          <p className="text-sm text-muted-foreground">{product.fabric}</p>
+
+          {/* Item 7: Show color options if saree has 2 or more colors */}
+          {colors.length >= 2 && (
+            <div className="flex items-center gap-1.5 my-2">
+              <span className="text-xs text-muted-foreground font-medium">
+                {colors.length} Colors:
+              </span>
+              <div className="flex items-center gap-1 flex-wrap">
+                {colors.map((c) => (
+                  <span
+                    key={c}
+                    title={c}
+                    className="w-3.5 h-3.5 rounded-full border border-black/20 shadow-2xs inline-block"
+                    style={{ backgroundColor: COLOR_MAP[c] || "#888888" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-baseline gap-2 mt-2">
           {product.mrp != null &&
             product.mrp > 0 &&
             product.mrp > product.price && (
@@ -100,22 +150,36 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </p>
         </div>
       </CardContent>
+
       <CardFooter className="p-4 pt-0 flex flex-col sm:flex-row gap-2">
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() =>
-            addItem({
-              productId: product._id,
-              name: product.name,
-              price: product.price,
-              imageUrl: product.imageUrls?.[0] ?? "",
-            })
-          }
-        >
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Add to Cart
-        </Button>
+        {/* Item 8: Out of stock near Add to Cart */}
+        {outOfStock ? (
+          <Button
+            variant="outline"
+            className="flex-1 text-destructive border-destructive/30 bg-destructive/5 hover:bg-destructive/10 cursor-not-allowed"
+            disabled
+          >
+            <Ban className="mr-2 h-4 w-4" />
+            Out of Stock
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() =>
+              addItem({
+                productId: product._id,
+                name: product.name,
+                price: product.price,
+                imageUrl: product.imageUrls?.[0] ?? "",
+                selectedColor: colors.length > 0 ? colors[0] : undefined,
+              })
+            }
+          >
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            Add to Cart
+          </Button>
+        )}
         <Button asChild className="flex-1 bg-primary hover:bg-primary/90">
           <Link to={`/product/${product._id}`}>View Details</Link>
         </Button>
@@ -125,8 +189,3 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
-
-
-
-
-

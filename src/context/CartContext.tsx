@@ -12,8 +12,8 @@ import * as storage from "@/lib/storage";
 interface CartContextValue {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number, selectedColor?: string) => void;
+  removeItem: (productId: string, selectedColor?: string) => void;
   clearCart: () => void;
   itemCount: number;
 }
@@ -35,12 +35,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(storage.addToCart(item, quantity));
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
-    setItems(storage.updateCartItemQuantity(productId, quantity));
-  }, []);
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number, selectedColor?: string) => {
+      setItems(storage.updateCartItemQuantity(productId, quantity, selectedColor));
+    },
+    []
+  );
 
-  const removeItem = useCallback((productId: string) => {
-    setItems(storage.removeFromCart(productId));
+  const removeItem = useCallback((productId: string, selectedColor?: string) => {
+    setItems(storage.removeFromCart(productId, selectedColor));
   }, []);
 
   const clearCart = useCallback(() => {

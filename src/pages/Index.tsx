@@ -5,10 +5,13 @@ import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Truck, Shield } from "lucide-react";
 
+import { sortProductsByLatest } from "@/lib/catalogConstants";
+import { Product } from "@/types";
+
 const API_BASE = "https://test-server-silk.vercel.app/api";
 
 const Index = () => {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,7 +23,8 @@ const Index = () => {
         if (!res.ok) throw new Error("Failed to fetch products");
 
         const data = await res.json();
-        if (mounted) setProducts(data);
+        const sorted = sortProductsByLatest(data);
+        if (mounted) setProducts(sorted);
       } catch (err) {
         console.error("Failed to load products:", err);
         if (mounted) setProducts([]);

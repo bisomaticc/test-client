@@ -1,4 +1,4 @@
-const API_BASE = "https://test-server-silk.vercel.app/api";
+export const API_BASE = "https://test-server-silk.vercel.app/api";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("adminToken");
