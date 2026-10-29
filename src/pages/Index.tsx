@@ -8,7 +8,7 @@ import { ArrowRight, Sparkles, Truck, Shield } from "lucide-react";
 import { sortProductsByLatest } from "@/lib/catalogConstants";
 import { Product } from "@/types";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+import { API_BASE } from "@/lib/api";
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);

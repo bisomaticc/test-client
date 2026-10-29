@@ -38,14 +38,6 @@ const Footer = () => {
                   Shop Sarees
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/admin/login"
-                  className="text-primary-foreground/80 hover:text-secondary transition-colors duration-200"
-                >
-                  Admin Panel
-                </Link>
-              </li>
             </ul>
           </div>
 

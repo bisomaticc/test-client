@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { CheckCircle, MessageCircle, Mail } from "lucide-react";
+import { convertDriveUrl } from "@/lib/catalogConstants";
 
 const checkoutSchema = z.object({
   customerName: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -63,37 +64,41 @@ const CheckoutForm = ({ isOpen, onClose, onSuccess }: CheckoutFormProps) => {
 
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-    const formattedItems = items.map((item) => ({
-      productId: item.productId,
-      name: item.selectedColor
-        ? `${item.name} (Color: ${item.selectedColor})`
-        : item.name,
-      price: item.price,
-      qty: item.quantity,
-      imageUrls: item.imageUrl || "",
-    }));
-
-    // Item 2: Build detailed WhatsApp message including item photo links
-    const waLines: string[] = [
-      "New Saree Order",
-      "",
-      `Name: ${values.customerName}`,
-      `Email: ${values.email}`,
-      `Phone: ${values.phone}`,
-      `Address: ${values.address}`,
-      "",
-      "Items Ordered:",
-    ];
-
-    formattedItems.forEach((item) => {
-      waLines.push(`• ${item.name} x${item.qty} - ₹${(item.price * item.qty).toLocaleString("en-IN")}`);
-      if (item.imageUrls) {
-        waLines.push(`  Photo: ${item.imageUrls}`);
-      }
+    const formattedItems = items.map((item) => {
+      const cleanImg = item.imageUrl ? convertDriveUrl(item.imageUrl) : "";
+      return {
+        productId: item.productId,
+        name: item.name,
+        color: item.selectedColor || "",
+        price: item.price,
+        qty: item.quantity,
+        imageUrls: cleanImg,
+        productUrl: `${window.location.origin}/products/${item.productId}`,
+      };
     });
 
-    waLines.push("");
-    waLines.push(`Total Amount: ₹${total.toLocaleString("en-IN")}`);
+    // Build detailed WhatsApp message with standalone links for thumbnail previews
+    const waLines: string[] = [
+      "*New Saree Order*",
+      "",
+      `*Name:* ${values.customerName}`,
+      `*Phone:* ${values.phone}`,
+    ];
+    if (values.email) waLines.push(`*Email:* ${values.email}`);
+    if (values.address) waLines.push(`*Address:* ${values.address}`);
+    waLines.push("", "*Items Ordered:*");
+
+    formattedItems.forEach((item) => {
+      const colorText = item.color ? ` (Color: ${item.color})` : "";
+      waLines.push(`• *${item.name}*${colorText} x ${item.qty} - ₹${(item.price * item.qty).toLocaleString("en-IN")}`);
+      waLines.push(`🔗 Product: ${item.productUrl}`);
+      if (item.imageUrls) {
+        waLines.push(`📷 Photo: ${item.imageUrls}`);
+      }
+      waLines.push("");
+    });
+
+    waLines.push(`*Total Amount:* ₹${total.toLocaleString("en-IN")}`);
 
     const fallbackWaUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       waLines.join("\n")

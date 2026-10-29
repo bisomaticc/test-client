@@ -17,7 +17,7 @@ import {
 } from "@/lib/catalogConstants";
 import { Product } from "@/types";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+import { API_BASE } from "@/lib/api";
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);

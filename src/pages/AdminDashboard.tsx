@@ -21,8 +21,10 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,6 +137,20 @@ const AdminDashboard = () => {
   const [newCategory, setNewCategory] = useState("");
   const [deleteFabricName, setDeleteFabricName] = useState<string | null>(null);
   const [deleteCategoryName, setDeleteCategoryName] = useState<string | null>(null);
+  const [editingFabric, setEditingFabric] = useState<string | null>(null);
+  const [editFabricNewName, setEditFabricNewName] = useState("");
+  const [editFabricUpdateProducts, setEditFabricUpdateProducts] = useState(true);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryNewName, setEditCategoryNewName] = useState("");
+  const [editCategoryUpdateProducts, setEditCategoryUpdateProducts] = useState(true);
+  const [forceDeleteFabricPrompt, setForceDeleteFabricPrompt] = useState<{
+    name: string;
+    productCount: number;
+  } | null>(null);
+  const [forceDeleteCategoryPrompt, setForceDeleteCategoryPrompt] = useState<{
+    name: string;
+    productCount: number;
+  } | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -267,47 +283,107 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteFabric = async () => {
-    if (!deleteFabricName) return;
+  const handleOpenEditFabric = (fabric: string) => {
+    setEditingFabric(fabric);
+    setEditFabricNewName(fabric);
+    setEditFabricUpdateProducts(true);
+  };
+
+  const handleSaveEditFabric = async () => {
+    if (!editingFabric || !editFabricNewName.trim()) return;
     try {
-      await apiDelete(
-        `/admin/catalog/fabric?name=${encodeURIComponent(deleteFabricName)}`
-      );
-      setDeleteFabricName(null);
+      await apiPut("/admin/catalog/fabric", {
+        oldName: editingFabric,
+        newName: editFabricNewName.trim(),
+        updateProducts: editFabricUpdateProducts,
+      });
+      toast.success(`Updated "${editingFabric}" to "${editFabricNewName.trim()}"`);
+      setEditingFabric(null);
       await loadData();
-      toast.success("Fabric removed.");
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "";
-      let msg = "Failed to remove fabric.";
-      try {
-        const parsed = JSON.parse(raw) as { message?: string };
-        if (parsed?.message) msg = parsed.message;
-      } catch {
-        if (raw) msg = raw;
-      }
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : "Failed to update fabric.");
     }
   };
 
-  const handleDeleteCategory = async () => {
-    if (!deleteCategoryName) return;
+  const handleOpenEditCategory = (category: string) => {
+    setEditingCategory(category);
+    setEditCategoryNewName(category);
+    setEditCategoryUpdateProducts(true);
+  };
+
+  const handleSaveEditCategory = async () => {
+    if (!editingCategory || !editCategoryNewName.trim()) return;
+    try {
+      await apiPut("/admin/catalog/category", {
+        oldName: editingCategory,
+        newName: editCategoryNewName.trim(),
+        updateProducts: editCategoryUpdateProducts,
+      });
+      toast.success(`Updated "${editingCategory}" to "${editCategoryNewName.trim()}"`);
+      setEditingCategory(null);
+      await loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update category.");
+    }
+  };
+
+  const handleDeleteFabric = async (force = false) => {
+    const targetName = forceDeleteFabricPrompt?.name || deleteFabricName;
+    if (!targetName) return;
     try {
       await apiDelete(
-        `/admin/catalog/category?name=${encodeURIComponent(deleteCategoryName)}`
+        `/admin/catalog/fabric?name=${encodeURIComponent(targetName)}${force ? "&force=true" : ""}`
       );
-      setDeleteCategoryName(null);
+      setDeleteFabricName(null);
+      setForceDeleteFabricPrompt(null);
       await loadData();
-      toast.success("Category removed.");
+      toast.success(`Fabric "${targetName}" removed.`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
-      let msg = "Failed to remove category.";
       try {
-        const parsed = JSON.parse(raw) as { message?: string };
-        if (parsed?.message) msg = parsed.message;
+        const parsed = JSON.parse(raw);
+        if (parsed?.requiresForce) {
+          setDeleteFabricName(null);
+          setForceDeleteFabricPrompt({
+            name: targetName,
+            productCount: parsed.productCount || 0,
+          });
+          return;
+        }
+        toast.error(parsed?.message || "Failed to remove fabric.");
       } catch {
-        if (raw) msg = raw;
+        toast.error(raw || "Failed to remove fabric.");
       }
-      toast.error(msg);
+    }
+  };
+
+  const handleDeleteCategory = async (force = false) => {
+    const targetName = forceDeleteCategoryPrompt?.name || deleteCategoryName;
+    if (!targetName) return;
+    try {
+      await apiDelete(
+        `/admin/catalog/category?name=${encodeURIComponent(targetName)}${force ? "&force=true" : ""}`
+      );
+      setDeleteCategoryName(null);
+      setForceDeleteCategoryPrompt(null);
+      await loadData();
+      toast.success(`Category "${targetName}" removed.`);
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.requiresForce) {
+          setDeleteCategoryName(null);
+          setForceDeleteCategoryPrompt({
+            name: targetName,
+            productCount: parsed.productCount || 0,
+          });
+          return;
+        }
+        toast.error(parsed?.message || "Failed to remove category.");
+      } catch {
+        toast.error(raw || "Failed to remove category.");
+      }
     }
   };
 
@@ -562,14 +638,26 @@ const AdminDashboard = () => {
                     {fabrics.map((f) => (
                       <li key={f} className="flex items-center justify-between py-2">
                         <span className="font-medium text-sm">{f}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive h-7 w-7"
-                          onClick={() => setDeleteFabricName(f)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground h-7 w-7"
+                            onClick={() => handleOpenEditFabric(f)}
+                            title="Edit Fabric"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive h-7 w-7"
+                            onClick={() => setDeleteFabricName(f)}
+                            title="Remove Fabric"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -628,14 +716,26 @@ const AdminDashboard = () => {
                     {categories.map((c) => (
                       <li key={c} className="flex items-center justify-between py-2">
                         <span className="font-medium text-sm">{c}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive h-7 w-7"
-                          onClick={() => setDeleteCategoryName(c)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground h-7 w-7"
+                            onClick={() => handleOpenEditCategory(c)}
+                            title="Edit Category"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive h-7 w-7"
+                            onClick={() => setDeleteCategoryName(c)}
+                            title="Remove Category"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -774,22 +874,132 @@ const AdminDashboard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Edit Fabric Dialog */}
+      <Dialog open={!!editingFabric} onOpenChange={() => setEditingFabric(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Fabric Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                Fabric Name
+              </label>
+              <Input
+                value={editFabricNewName}
+                onChange={(e) => setEditFabricNewName(e.target.value)}
+                placeholder="Enter new fabric name"
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEditFabric()}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="updateFabricProducts"
+                checked={editFabricUpdateProducts}
+                onCheckedChange={(c) => setEditFabricUpdateProducts(Boolean(c))}
+              />
+              <label
+                htmlFor="updateFabricProducts"
+                className="text-xs text-muted-foreground cursor-pointer select-none"
+              >
+                Also update all existing sarees with this fabric to &quot;{editFabricNewName.trim() || "new name"}&quot;
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditingFabric(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditFabric} className="bg-primary hover:bg-primary/90">
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={!!editingCategory} onOpenChange={() => setEditingCategory(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Category Option</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                Category Name
+              </label>
+              <Input
+                value={editCategoryNewName}
+                onChange={(e) => setEditCategoryNewName(e.target.value)}
+                placeholder="Enter new category name"
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEditCategory()}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="updateCategoryProducts"
+                checked={editCategoryUpdateProducts}
+                onCheckedChange={(c) => setEditCategoryUpdateProducts(Boolean(c))}
+              />
+              <label
+                htmlFor="updateCategoryProducts"
+                className="text-xs text-muted-foreground cursor-pointer select-none"
+              >
+                Also update all existing sarees with this category to &quot;{editCategoryNewName.trim() || "new name"}&quot;
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditingCategory(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditCategory} className="bg-primary hover:bg-primary/90">
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Fabric Confirmation */}
       <AlertDialog open={!!deleteFabricName} onOpenChange={() => setDeleteFabricName(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Fabric</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove &quot;{deleteFabricName}&quot;? This will fail if any product uses this fabric.
+              Are you sure you want to remove &quot;{deleteFabricName}&quot; from the catalog?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteFabric}
+              onClick={() => handleDeleteFabric(false)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Fabric Confirmation */}
+      <AlertDialog open={!!forceDeleteFabricPrompt} onOpenChange={() => setForceDeleteFabricPrompt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Remove Fabric</AlertDialogTitle>
+            <AlertDialogDescription>
+              &quot;{forceDeleteFabricPrompt?.name}&quot; is currently assigned to{" "}
+              <b>{forceDeleteFabricPrompt?.productCount}</b> product(s).
+              <br /><br />
+              Do you still want to remove it from the catalog options list?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDeleteFabric(true)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -801,16 +1011,40 @@ const AdminDashboard = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Category</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove &quot;{deleteCategoryName}&quot;? This will fail if any product uses this category.
+              Are you sure you want to remove &quot;{deleteCategoryName}&quot; from the catalog?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteCategory}
+              onClick={() => handleDeleteCategory(false)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Category Confirmation */}
+      <AlertDialog open={!!forceDeleteCategoryPrompt} onOpenChange={() => setForceDeleteCategoryPrompt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Remove Category</AlertDialogTitle>
+            <AlertDialogDescription>
+              &quot;{forceDeleteCategoryPrompt?.name}&quot; is currently assigned to{" "}
+              <b>{forceDeleteCategoryPrompt?.productCount}</b> product(s).
+              <br /><br />
+              Do you still want to remove it from the catalog options list?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDeleteCategory(true)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

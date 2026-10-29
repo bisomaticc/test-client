@@ -1,9 +1,7 @@
 import { Product, CartItem } from "@/types";
+import { API_BASE } from "@/lib/api";
 
 const AUTH_STORAGE_KEY = "adminToken";
-
-
-const API_BASE = "https://test-server-silk.vercel.app/api";
 
 const CART_KEY = "saree_cart";
 export const getAuthToken = (): string | null => {

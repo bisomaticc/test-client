@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { CheckCircle, MessageCircle, Mail } from "lucide-react";
+import { convertDriveUrl } from "@/lib/catalogConstants";
 
 const orderSchema = z.object({
   customerName: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -60,11 +61,7 @@ const OrderForm = ({ product, selectedColor, isOpen, onClose }: OrderFormProps) 
   const onSubmit = async (values: OrderFormData) => {
     setSubmitting(true);
     const phoneNumber = "919079707132";
-    const productNameWithColor = selectedColor
-      ? `${product.name} (Color: ${selectedColor})`
-      : product.name;
-
-    const primaryImage = product.imageUrls?.[0] || "";
+    const primaryImage = product.imageUrls?.[0] ? convertDriveUrl(product.imageUrls[0]) : "";
 
     const orderPayload = {
       customerName: values.customerName,
@@ -74,10 +71,12 @@ const OrderForm = ({ product, selectedColor, isOpen, onClose }: OrderFormProps) 
       items: [
         {
           productId: product._id,
-          name: productNameWithColor,
+          name: product.name,
+          color: selectedColor || "",
           price: product.price,
           qty: 1,
           imageUrls: primaryImage,
+          productUrl: `${window.location.origin}/products/${product._id}`,
         },
       ],
     };
@@ -85,17 +84,32 @@ const OrderForm = ({ product, selectedColor, isOpen, onClose }: OrderFormProps) 
     let waUrl = "";
 
     try {
-      // 1. Submit to API backend (sends email & records in MongoDB)
+      // 1. Submit to API backend (sends rich email & records in MongoDB)
       const response = await apiPost("/checkout", orderPayload);
 
       if (response?.whatsappURL) {
         waUrl = response.whatsappURL;
       } else {
-        waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
-          `New Saree Order\n\nName: ${values.customerName}\nEmail: ${values.email}\nPhone: ${values.phone}\nAddress:\n${values.address}\n\nItem: ${productNameWithColor}\nPrice: ₹${product.price.toLocaleString(
-            "en-IN"
-          )}\nPhoto: ${primaryImage}\n\nTotal: ₹${product.price.toLocaleString("en-IN")}`
-        )}`;
+        const colorText = selectedColor ? ` (Color: ${selectedColor})` : "";
+        const fallbackLines = [
+          "*New Saree Order*",
+          "",
+          `*Name:* ${values.customerName}`,
+          `*Phone:* ${values.phone}`,
+        ];
+        if (values.email) fallbackLines.push(`*Email:* ${values.email}`);
+        if (values.address) fallbackLines.push(`*Address:* ${values.address}`);
+        fallbackLines.push(
+          "",
+          "*Items Ordered:*",
+          `• *${product.name}*${colorText} x 1 - ₹${product.price.toLocaleString("en-IN")}`,
+          `🔗 Product: ${window.location.origin}/products/${product._id}`
+        );
+        if (primaryImage) {
+          fallbackLines.push(`📷 Photo: ${primaryImage}`);
+        }
+        fallbackLines.push("", `*Total Amount:* ₹${product.price.toLocaleString("en-IN")}`);
+        waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(fallbackLines.join("\n"))}`;
       }
 
       setWhatsappLink(waUrl);
@@ -107,7 +121,7 @@ const OrderForm = ({ product, selectedColor, isOpen, onClose }: OrderFormProps) 
         phone: values.phone,
         address: values.address,
         productId: product._id,
-        productName: productNameWithColor,
+        productName: selectedColor ? `${product.name} (Color: ${selectedColor})` : product.name,
         productPrice: product.price,
         productImage: primaryImage,
         selectedColor,

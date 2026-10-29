@@ -88,6 +88,10 @@ const AdminProductForm = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [showCustomFabricInput, setShowCustomFabricInput] = useState(false);
+  const [customFabricInput, setCustomFabricInput] = useState("");
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -244,6 +248,42 @@ const AdminProductForm = () => {
     }
   };
 
+  const handleAddCustomFabric = async () => {
+    const trimmed = customFabricInput.trim();
+    if (!trimmed) return;
+    form.setValue("fabric", trimmed, { shouldValidate: true, shouldDirty: true });
+    setFabrics((prev) => Array.from(new Set([...prev, trimmed])));
+    setShowCustomFabricInput(false);
+    setCustomFabricInput("");
+    try {
+      await apiPost("/admin/catalog/fabric", { name: trimmed });
+      toast.success(`Custom fabric "${trimmed}" selected & saved to catalog`);
+    } catch {
+      toast.success(`Custom fabric "${trimmed}" selected`);
+    }
+  };
+
+  const handleAddCustomCategory = async () => {
+    const trimmed = customCategoryInput.trim();
+    if (!trimmed) return;
+    const current = form.getValues("category") || "";
+    const list = current ? current.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    if (!list.includes(trimmed)) {
+      list.push(trimmed);
+    }
+    form.setValue("category", list.join(", "), { shouldValidate: true, shouldDirty: true });
+    setSelectedCategories(list);
+    setCategories((prev) => Array.from(new Set([...prev, trimmed])));
+    setShowCustomCategoryInput(false);
+    setCustomCategoryInput("");
+    try {
+      await apiPost("/admin/catalog/category", { name: trimmed });
+      toast.success(`Custom category "${trimmed}" selected & saved to catalog`);
+    } catch {
+      toast.success(`Custom category "${trimmed}" selected`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="bg-background border-b sticky top-0 z-50">
@@ -355,21 +395,72 @@ const AdminProductForm = () => {
                     name="fabric"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Fabric</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Fabric" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-60">
-                            {fabricOptions.map((v) => (
-                              <SelectItem key={v} value={v}>
-                                {v}
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Fabric</FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomFabricInput(!showCustomFabricInput)}
+                            className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {showCustomFabricInput ? "Choose from list" : "+ Custom Fabric"}
+                          </button>
+                        </div>
+                        {showCustomFabricInput ? (
+                          <div className="space-y-1.5">
+                            <div className="flex gap-2">
+                              <Input
+                                value={customFabricInput}
+                                onChange={(e) => setCustomFabricInput(e.target.value)}
+                                placeholder="e.g. Mulberry Silk, Kota Doria"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleAddCustomFabric();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleAddCustomFabric}
+                                className="bg-primary hover:bg-primary/90 shrink-0"
+                              >
+                                Set & Save
+                              </Button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Type custom fabric name and click &quot;Set & Save&quot;.
+                            </p>
+                          </div>
+                        ) : (
+                          <Select
+                            onValueChange={(val) => {
+                              if (val === "__custom__") {
+                                setShowCustomFabricInput(true);
+                              } else {
+                                field.onChange(val);
+                              }
+                            }}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Fabric" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-h-60">
+                              <SelectItem value="__custom__" className="text-primary font-medium">
+                                + Add Custom Fabric...
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              {fabricOptions.map((v) => (
+                                <SelectItem key={v} value={v}>
+                                  {v}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -381,18 +472,59 @@ const AdminProductForm = () => {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center justify-between">
-                          <FormLabel>Category (Multiple Allowed)</FormLabel>
-                          {selectedCategories.length > 0 && (
-                            <span className="text-xs text-primary font-medium">
-                              {selectedCategories.length} selected
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <FormLabel>Category (Multiple Allowed)</FormLabel>
+                            {selectedCategories.length > 0 && (
+                              <span className="text-xs text-primary font-medium">
+                                ({selectedCategories.length})
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomCategoryInput(!showCustomCategoryInput)}
+                            className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {showCustomCategoryInput ? "Hide custom" : "+ Custom"}
+                          </button>
                         </div>
+
+                        {showCustomCategoryInput && (
+                          <div className="flex gap-2 mb-2">
+                            <Input
+                              value={customCategoryInput}
+                              onChange={(e) => setCustomCategoryInput(e.target.value)}
+                              placeholder="e.g. Royal Wedding"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddCustomCategory();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleAddCustomCategory}
+                              className="bg-primary hover:bg-primary/90 shrink-0"
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        )}
+
                         <Select
                           onValueChange={(val) => {
-                            field.onChange(val);
-                            if (!selectedCategories.includes(val)) {
-                              setSelectedCategories([...selectedCategories, val]);
+                            if (val === "__custom__") {
+                              setShowCustomCategoryInput(true);
+                            } else {
+                              field.onChange(val);
+                              if (!selectedCategories.includes(val)) {
+                                const updated = [...selectedCategories, val];
+                                setSelectedCategories(updated);
+                                form.setValue("category", updated.join(", "), { shouldValidate: true, shouldDirty: true });
+                              }
                             }
                           }}
                           value={field.value}
@@ -403,6 +535,9 @@ const AdminProductForm = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="max-h-60">
+                            <SelectItem value="__custom__" className="text-primary font-medium">
+                              + Add Custom Category...
+                            </SelectItem>
                             {categoryOptions.map((v) => (
                               <SelectItem key={v} value={v}>
                                 {v}
@@ -425,6 +560,7 @@ const AdminProductForm = () => {
                                   onClick={() => {
                                     const next = selectedCategories.filter((c) => c !== cat);
                                     setSelectedCategories(next);
+                                    form.setValue("category", next.join(", "), { shouldValidate: true, shouldDirty: true });
                                     if (field.value === cat) {
                                       field.onChange(next[0] || "");
                                     }

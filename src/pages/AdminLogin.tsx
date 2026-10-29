@@ -23,7 +23,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Lock, AlertCircle } from "lucide-react";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+import { API_BASE } from "@/lib/api";
 
 const loginSchema = z.object({
   email: z.string().email("Valid email required"),

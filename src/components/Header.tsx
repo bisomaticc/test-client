@@ -114,12 +114,6 @@ const Header = () => {
                 )}
               </HoverCardContent>
             </HoverCard>
-            <Link
-              to="/admin/login"
-              className="text-foreground/60 hover:text-primary transition-colors text-sm"
-            >
-              Admin
-            </Link>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -157,13 +151,6 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Cart {itemCount > 0 && `(${itemCount})`}
-              </Link>
-              <Link
-                to="/admin/login"
-                className="text-foreground/60 hover:text-primary transition-colors text-sm py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Admin
               </Link>
             </div>
           </nav>

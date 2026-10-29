@@ -26,10 +26,11 @@ import {
   getProductColors,
   isProductOutOfStock,
   COLOR_MAP,
+  convertDriveUrl,
 } from "@/lib/catalogConstants";
 import { Product } from "@/types";
 
-const API_BASE = "https://test-server-silk.vercel.app/api";
+import { API_BASE } from "@/lib/api";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -119,12 +120,27 @@ const ProductDetail = () => {
 
   const handleEnquireWhatsApp = () => {
     const phoneNumber = "919079707132";
-    const text = `Hi, I am interested in *${product.name}* (Price: ₹${product.price.toLocaleString(
-      "en-IN"
-    )}).\nIt currently shows as Out of Stock. Could you please let me know when this saree will be available?\nProduct Link: ${
-      window.location.href
-    }`;
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`, "_blank");
+    const primaryImg = images?.[0] ? convertDriveUrl(images[0]) : "";
+    const colorPart = selectedColor ? `\n• *Color:* ${selectedColor}` : "";
+    const fabricPart = product.fabric ? `\n• *Fabric:* ${product.fabric}` : "";
+
+    const lines = [
+      "*Product Inquiry (Out of Stock)*",
+      "",
+      `Hi, I am interested in *${product.name}*`,
+      `• *Price:* ₹${product.price.toLocaleString("en-IN")}${fabricPart}${colorPart}`,
+      "",
+      "It currently shows as Out of Stock. Could you please let me know when this saree will be available for order?",
+      "",
+      "🔗 *Product Link:*",
+      window.location.href,
+    ];
+
+    if (primaryImg) {
+      lines.push("", "📷 *Product Photo:*", primaryImg);
+    }
+
+    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
   };
 
   return (

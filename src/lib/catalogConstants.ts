@@ -129,3 +129,25 @@ export function sortProductsByLatest(products: Product[]): Product[] {
     return timeB - timeA;
   });
 }
+
+/**
+ * Converts Google Drive sharing URL to direct image URL.
+ */
+export function convertDriveUrl(url: string): string {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    const idParam = parsed.searchParams.get("id");
+    if (idParam) {
+      return `https://lh3.googleusercontent.com/d/${idParam}`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
